@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>아픈 부위와 아픈 정도 표현하기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+/* 레이아웃: 위에서 아래로 한 단계씩. 제목줄 → 단계 표시 → 활동 카드 → 이전/다음 버튼 */
+:root{
+  --bg:#eaf5f8;
+  --paper:#ffffff;
+  --ink:#3a2c27;
+  --muted:#6e5f58;
+  --line:#cfe3ea;
+  --brand:#167d6e;
+  --brand-soft:#d9f0ec;
+  --hot:#e5383b;
+  --hot-soft:#fff0ef;
+  --pick:#ffe0c7;
+  --outline:#5a4034;
+  --f-display:'Jua','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+  --f-body:'Jua','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:18px;line-height:1.5;
+  padding-block:18px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+h1,h2,h3,h4{font-family:var(--f-display);font-weight:400;margin:0;text-wrap:balance}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,.rail:focus-visible,input:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+.wrap{max-width:980px;margin:0 auto}
+
+/* 제목줄 */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand svg{width:56px;height:auto;flex:none}
+.brand h1{font-size:clamp(26px,5vw,38px);line-height:1.1}
+.soundBtn{display:flex;align-items:center;gap:8px;border:3px solid var(--line);background:var(--paper);border-radius:999px;padding:8px 16px;font-family:var(--f-display);font-size:18px;flex:none}
+.soundBtn svg{width:22px;height:22px}
+.soundBtn[aria-pressed="false"]{color:var(--muted);background:#f3f3f3}
+
+/* 단계 표시 */
+.steps{display:flex;gap:8px;margin-bottom:16px}
+.step{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 8px;border-radius:999px;border:3px solid var(--line);background:var(--paper);font-family:var(--f-display);font-size:clamp(16px,3.2vw,22px)}
+.step .n{width:32px;height:32px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-size:18px;flex:none}
+.step.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.step.on .n{background:#fff;color:var(--brand)}
+.step.done .n{background:var(--brand-soft);color:var(--brand)}
+
+.panel{background:var(--paper);border:3px solid var(--line);border-radius:28px;padding:24px}
+.panel h2{font-size:clamp(28px,5vw,40px);line-height:1.15}
+.hint{margin:6px 0 18px;color:var(--muted);font-size:19px}
+
+/* 1. 몸 그림 */
+.bodies{display:flex;justify-content:center;gap:clamp(12px,5vw,48px);background:#f4fafc;border-radius:24px;padding:16px 12px 10px;margin-bottom:20px}
+.bodies figure{margin:0;width:min(250px,42%);text-align:center}
+.bodies figcaption,.cert-fig figcaption{display:inline-block;margin-top:4px;padding:2px 16px;border-radius:999px;background:var(--brand-soft);color:var(--brand);font-family:var(--f-display);font-size:18px}
+.fig{display:block;width:100%;height:auto}
+.fig .part{transform-box:fill-box;transform-origin:center}
+.live .part{cursor:pointer}
+.fig .sh{transition:fill .25s}
+.fig .shS{transition:stroke .25s}
+.fig .mArea{fill:transparent;stroke:none;transition:fill .25s}
+.fig .part.on .sh,.fig .part.on .mArea{fill:var(--hot)}
+.fig .part.on .shS{stroke:var(--hot)}
+.fig .part.on .mArea{stroke:var(--outline);stroke-width:3}
+.live .part.on{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.07)}100%{transform:scale(1)}}
+
+/* 그림카드 */
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (min-width:600px){.cards{grid-template-columns:repeat(5,1fr)}}
+.card{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 8px 12px;background:#fff;border:3px solid var(--line);border-radius:22px;transition:border-color .15s,background .15s,transform .1s}
+.card:active{transform:scale(.97)}
+.card .cl{font-family:var(--f-display);font-size:clamp(22px,3vw,26px);line-height:1.1}
+.card .check{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:var(--hot);color:#fff;display:none;place-items:center;font-size:18px;font-weight:700}
+.card.isOn{border-color:var(--hot);background:var(--hot-soft)}
+.card.isOn .check{display:grid}
+.thumb *{pointer-events:none}
+.card .fig{aspect-ratio:1.2/1}
+.thumb .part:not(.hot) .sh{fill:#eceff1;stroke:#c8ccd0}
+.thumb .part:not(.hot) .shS{stroke:#eceff1}
+.thumb .part:not(.hot) .ol{stroke:#c8ccd0}
+.thumb .part.hot{--tone:var(--pick)}
+.isOn .thumb .part.hot{--tone:var(--hot)}
+.thumb .part.hot .sh,.thumb .part.hot .mArea{fill:var(--tone)}
+.thumb .part.hot .shS{stroke:var(--tone)}
+.thumb .part.hot .mArea{stroke:var(--outline);stroke-width:3}
+.tools{display:flex;justify-content:flex-end;margin-top:14px}
+.ghostBtn{border:3px solid var(--line);background:#fff;border-radius:999px;padding:8px 20px;font-family:var(--f-display);font-size:19px}
+
+/* 2. 아픈 정도 */
+.chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 16px}
+.chips b{font-family:var(--f-display);font-weight:400;font-size:20px}
+.chip{background:var(--hot-soft);border:2px solid var(--hot);color:#a31f22;border-radius:999px;padding:2px 14px;font-family:var(--f-display);font-size:19px}
+.stage{display:flex;align-items:center;justify-content:center;gap:clamp(12px,4vw,40px);flex-wrap:wrap;padding:20px;border:5px solid;border-radius:28px;transition:background .25s,border-color .25s}
+.faceBig svg{display:block;width:min(58vw,240px);height:auto}
+.lvText{text-align:center;min-width:0}
+.lvNum{display:inline-block;padding:2px 18px;border-radius:999px;background:#fff;border:3px solid;font-family:var(--f-display);font-size:24px}
+.lvLabel{display:block;margin-top:8px;font-family:var(--f-display);font-size:clamp(34px,7vw,56px);line-height:1.1}
+.faceBig.lv4 svg{animation:tremble .35s linear infinite}
+.faceBig.lv5 svg{animation:shake .2s linear infinite}
+@keyframes tremble{0%,100%{transform:translateX(0)}50%{transform:translateX(2px)}}
+@keyframes shake{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-4px) rotate(-1.5deg)}75%{transform:translateX(4px) rotate(1.5deg)}}
+
+.scale{margin-top:26px}
+.rail{position:relative;height:72px;margin:0 calc(100% / 12);touch-action:none;cursor:pointer}
+.bar{position:absolute;left:-12px;right:-12px;top:50%;height:26px;transform:translateY(-50%);border-radius:13px;border:3px solid var(--outline);background:linear-gradient(90deg,#34c759,#9bd445,#ffd23f,#ff9f1c,#ff5a36,#e5383b)}
+.tick{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#fff;border:3px solid var(--outline)}
+.thumb2{position:absolute;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;border:5px solid #fff;outline:3px solid var(--outline);display:grid;place-items:center;font-family:var(--f-display);font-size:28px;color:#fff;box-shadow:0 4px 10px rgba(58,44,39,.3);transition:left .18s ease,background .2s;cursor:grab;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.thumb2.drag{transition:background .2s;cursor:grabbing}
+.labels{display:grid;grid-template-columns:repeat(6,1fr);margin-top:8px}
+.lb{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px 8px;border:3px solid transparent;border-radius:18px;background:none;min-width:0}
+.lb svg{width:min(100%,78px);height:auto}
+.lb .t{font-size:clamp(12px,2.1vw,17px);line-height:1.25;text-align:center;word-break:keep-all}
+.lb .no{font-family:var(--f-display);font-size:clamp(16px,2.4vw,22px)}
+.lb.act{border-color:var(--outline);background:var(--soft)}
+
+/* 3. 보건증 */
+.nameHint{margin:0 0 14px}
+.cert{max-width:680px;margin:0 auto;border:4px solid var(--brand);border-radius:24px;overflow:hidden;background:#fff}
+.cert-head{display:flex;align-items:center;gap:14px;background:var(--brand);color:#fff;padding:12px 20px}
+.cert-head svg{width:44px;height:44px;flex:none}
+.cert-head h3{font-size:40px;line-height:1;flex:1;letter-spacing:.2em}
+.cert-head time{font-size:17px}
+.nameRow{display:flex;align-items:flex-end;gap:12px;padding:16px 20px 6px}
+.nameRow span{font-family:var(--f-display);font-size:28px;line-height:1.4}
+.nameRow input{flex:1;min-width:0;border:0;border-bottom:3px solid var(--ink);background:#fffdf3;font-family:var(--f-display);font-size:34px;padding:2px 8px;border-radius:8px 8px 0 0;color:var(--ink)}
+.nameRow input::placeholder{color:#c2b5ae}
+.cert-body{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:18px;padding:14px 20px 8px}
+@media (max-width:600px){.cert-body{grid-template-columns:1fr}}
+.cert-fig{display:flex;justify-content:center;gap:10px;background:#f4fafc;border-radius:18px;padding:10px 8px 8px}
+.cert-fig figure{margin:0;width:46%;text-align:center}
+.cert h4{font-size:22px;color:var(--brand);margin-bottom:6px}
+.cert section+section{margin-top:14px}
+.certParts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.certParts li{display:flex;flex-direction:column;align-items:center;border:2px solid var(--hot);background:var(--hot-soft);border-radius:14px;padding:4px 6px 6px;font-family:var(--f-display);font-size:20px;line-height:1.2}
+.certParts li .fig{aspect-ratio:1.2/1}
+.certNone{color:var(--muted);margin:0}
+.certLevel{display:flex;align-items:center;gap:14px}
+.certLevel svg{width:104px;height:auto;flex:none}
+.certLevel .num{font-family:var(--f-display);font-size:20px;color:var(--muted)}
+.certLevel .lab{display:block;font-family:var(--f-display);font-size:34px;line-height:1.1}
+.meter{display:flex;gap:4px;margin-top:10px}
+.seg{flex:1;height:34px;border-radius:10px;display:grid;place-items:center;font-family:var(--f-display);font-size:18px;color:var(--t);background:var(--c);border:3px solid transparent;opacity:.55}
+.seg.act{opacity:1;border-color:var(--outline);transform:scale(1.12)}
+.cert-foot{margin:6px 20px 16px;padding-top:10px;border-top:3px dashed var(--line);text-align:center;font-family:var(--f-display);font-size:22px;color:var(--brand)}
+
+/* 아래 버튼 */
+.nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}
+.navBtn{min-width:140px;min-height:60px;border-radius:999px;border:4px solid var(--brand);background:var(--brand);color:#fff;font-family:var(--f-display);font-size:26px;padding:8px 26px}
+.navBtn.sec{background:#fff;color:var(--brand)}
+.navBtn:disabled{background:#d9dde0;border-color:#d9dde0;color:#fff;cursor:not-allowed}
+.navNote{flex:1;text-align:center;color:var(--muted);font-size:17px}
+.printBtn{background:var(--hot);border-color:var(--hot)}
+.actions{display:flex;justify-content:center;margin-top:18px}
+
+/* 인쇄 */
+@media print{
+  @page{size:A4 portrait;margin:14mm}
+  body{background:#fff;padding:0}
+  .top,.steps,.nav,.noprint{display:none!important}
+  .panel{border:0;padding:0;border-radius:0}
+  .panel[hidden]{display:none!important}
+  .cert{max-width:none;margin:0 auto}
+  .nameRow input::placeholder{color:transparent}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+@media (max-width:560px){
+  .panel{padding:16px 12px}
+  .stage{padding:14px 10px}
+  .nav{flex-wrap:wrap}
+  .navBtn{min-width:120px;font-size:23px}
+  .navNote{order:3;flex-basis:100%}
+  .cert-head h3{font-size:32px}
+  .nameRow input{font-size:28px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand">
+    <span id="logo" aria-hidden="true"></span>
+    <h1>아픈 부위와 아픈 정도 표현하기</h1>
+  </div>
+  <button type="button" class="soundBtn" id="soundBtn" aria-pressed="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path id="soundWave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <span id="soundTxt">소리 켜짐</span>
+  </button>
+</header>
+
+<nav class="steps" aria-label="활동 단계">
+  <button type="button" class="step on" data-go="1"><span class="n">1</span><span>아픈 곳</span></button>
+  <button type="button" class="step" data-go="2"><span class="n">2</span><span>아픈 정도</span></button>
+  <button type="button" class="step" data-go="3"><span class="n">3</span><span>보건증</span></button>
+</nav>
+
+<main>
+  <!-- 활동 1 -->
+  <section class="panel" id="s1">
+    <h2>어디가 아파요?</h2>
+    <p class="hint">그림 카드를 눌러서 아픈 곳을 표시해요. 몸 그림을 눌러도 돼요.</p>
+    <div class="bodies" id="bodies"></div>
+    <div class="cards" id="cards"></div>
+    <div class="tools"><button type="button" class="ghostBtn" id="clearParts">모두 지우기</button></div>
+  </section>
+
+  <!-- 활동 2 -->
+  <section class="panel" id="s2" hidden>
+    <h2>얼마나 아파요?</h2>
+    <p class="hint">동그라미를 끌어서 옮겨요. 얼굴이 바뀌어요.</p>
+    <div class="chips" id="pickedChips"></div>
+    <div class="stage" id="stage">
+      <div class="faceBig" id="faceBig"></div>
+      <div class="lvText"><span class="lvNum" id="lvNum">0단계</span><strong class="lvLabel" id="lvLabel">안 아파요</strong></div>
+    </div>
+    <div class="scale">
+      <div class="rail" id="rail" role="slider" tabindex="0" aria-label="아픈 정도" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0" aria-valuetext="0단계 안 아파요">
+        <div class="bar"></div>
+        <i class="tick" style="left:0%"></i><i class="tick" style="left:20%"></i><i class="tick" style="left:40%"></i><i class="tick" style="left:60%"></i><i class="tick" style="left:80%"></i><i class="tick" style="left:100%"></i>
+        <div class="thumb2" id="thumb">0</div>
+      </div>
+      <div class="labels" id="labels"></div>
+    </div>
+  </section>
+
+  <!-- 활동 3 -->
+  <section class="panel" id="s3" hidden>
+    <h2 class="noprint">보건증 만들기</h2>
+    <p class="hint noprint">이름을 쓰고 보건증을 만들어 보아요.</p>
+    <article class="cert" id="cert">
+      <div class="cert-head">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="3" width="42" height="42" rx="12" fill="#fff"/><path d="M19 11h10v8h8v10h-8v8H19v-8h-8V19h8z" fill="#e5383b" stroke="#5a4034" stroke-width="2.5" stroke-linejoin="round"/></svg>
+        <h3>보건증</h3>
+        <time id="certDate"></time>
+      </div>
+      <label class="nameRow"><span>이름</span><input id="nameInput" type="text" maxlength="20" placeholder="이름을 써요" autocomplete="off"></label>
+      <div class="cert-body">
+        <div class="cert-fig" id="certFig"></div>
+        <div>
+          <section><h4>아픈 곳</h4><ul class="certParts" id="certParts"></ul></section>
+          <section><h4>아픈 정도</h4>
+            <div class="certLevel"><div id="certFace"></div><div><span class="num" id="certNum"></span><strong class="lab" id="certLab"></strong></div></div>
+            <div class="meter" id="certMeter"></div>
+          </section>
+        </div>
+      </div>
+      <p class="cert-foot">보건 선생님께 보여 주세요.</p>
+    </article>
+    <div class="actions noprint"><button type="button" class="navBtn printBtn" id="printBtn">인쇄하기</button></div>
+    <p class="noprint" id="printMsg" hidden style="text-align:center;margin:12px 0 0;color:#a31f22;font-size:19px"></p>
+  </section>
+</main>
+
+<div class="nav">
+  <button type="button" class="navBtn sec" id="prev">◀ 이전</button>
+  <span class="navNote" id="navNote"></span>
+  <button type="button" class="navBtn" id="next">다음 ▶</button>
+</div>
+
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+
+/* ---------- 데이터 ---------- */
+var OL='#5a4034',SKIN='#ffe0c7',HAIR='#7b5544',TOP='#bfe6d6',PANTS='#c9d3f5',D='#3b2a24',TEAR='#8fd3ff';
+var PARTS=[
+  {id:'head', label:'머리', say:'머리가 아파요', view:'front', crop:[36,24,168,140]},
+  {id:'mouth',label:'이',say:'이가 아파요', view:'front', crop:[72,96,96,80]},
+  {id:'neck', label:'목',  say:'목이 아파요', view:'front', crop:[72,140,96,80]},
+  {id:'chest',label:'가슴',say:'가슴이 아파요', view:'front', crop:[60,160,120,100]},
+  {id:'belly',label:'배',  say:'배가 아파요', view:'front', crop:[60,218,120,100]},
+  {id:'arm',  label:'팔',  say:'팔이 아파요', view:'front', crop:[24,170,192,160]},
+  {id:'hand', label:'손',  say:'손이 아파요', view:'front', crop:[30,216,180,150]},
+  {id:'leg',  label:'다리',say:'다리가 아파요', view:'front', crop:[54,262,132,110]},
+  {id:'foot', label:'발',  say:'발이 아파요', view:'front', crop:[54,306,132,110]},
+  {id:'back', label:'등/허리',say:'등이랑 허리가 아파요', view:'back', crop:[40,168,168,140]}
+];
+var LV_COLOR=['#34c759','#9bd445','#ffd23f','#ff9f1c','#ff5a36','#e5383b'];
+var LV_SOFT =['#d9f5df','#ecf6cf','#fff3c4','#ffe2b8','#ffcfbe','#ffb9b5'];
+var LV_TEXT =[D,D,D,D,'#fff','#fff'];
+var LV_LABEL=['안 아파요','불편해요','조금 아파요','아파요','많이 아파요','아주 많이 아파요'];
+var FACE_SKIN=['#ffe3cc','#ffe3cc','#ffe0c6','#ffd8be','#ffcab5','#ffb4a6'];
+var CHEEK_OP=[0.6,0.3,0.3,0.4,0.55,0.75];
+
+/* ---------- 몸 그림 ---------- */
+function cap(x1,y1,x2,y2,w,c){
+  return '<line class="ol" x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+OL+'" stroke-width="'+(w+6)+'" stroke-linecap="round"/>'+
+         '<line class="shS" x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+c+'" stroke-width="'+w+'" stroke-linecap="round"/>';
+}
+function sh(tag,a){return '<'+tag+' class="sh" '+a+' stroke="'+OL+'" stroke-width="3" stroke-linejoin="round"/>';}
+
+function buildFig(view,o){
+  o=o||{};
+  var on=o.on||{has:function(){return false}};
+  function P(id,inner){
+    return '<g class="part'+(on.has(id)?' on':'')+(o.hot===id?' hot':'')+'" data-part="'+id+'">'+inner+'</g>';
+  }
+  var s='<ellipse cx="120" cy="384" rx="74" ry="6" fill="rgba(90,64,52,.14)"/>'+
+    P('arm',cap(92,198,58,262,26,TOP)+cap(148,198,182,262,26,TOP))+
+    P('leg',cap(104,292,98,350,30,PANTS)+cap(136,292,142,350,30,PANTS))+
+    P('foot',sh('ellipse','cx="94" cy="368" rx="24" ry="12" fill="'+SKIN+'"')+sh('ellipse','cx="146" cy="368" rx="24" ry="12" fill="'+SKIN+'"'))+
+    P('hand',sh('circle','cx="54" cy="272" r="14" fill="'+SKIN+'"')+sh('circle','cx="186" cy="272" r="14" fill="'+SKIN+'"'))+
+    P('neck',sh('rect','x="107" y="150" width="26" height="40" rx="10" fill="'+SKIN+'"'));
+
+  var tuft='<path d="M110 32 Q114 10 138 18 Q124 20 128 36 Z" fill="'+HAIR+'" stroke="'+OL+'" stroke-width="3" stroke-linejoin="round"/>';
+  var ears=sh('circle','cx="50" cy="106" r="11" fill="'+SKIN+'"')+sh('circle','cx="190" cy="106" r="11" fill="'+SKIN+'"');
+
+  if(view==='front'){
+    s+=P('chest',sh('path','d="M84 206 Q84 178 112 178 L128 178 Q156 178 156 206 L156 240 L84 240 Z" fill="'+TOP+'"'));
+    s+=P('belly',sh('path','d="M84 240 L156 240 L156 276 Q156 302 130 302 L110 302 Q84 302 84 276 Z" fill="'+TOP+'"')+
+      '<circle cx="120" cy="274" r="2.6" fill="'+OL+'" opacity=".45"/>');
+    var face=
+      '<ellipse cx="78" cy="122" rx="11" ry="7" fill="#ff9aa2" opacity=".55"/><ellipse cx="162" cy="122" rx="11" ry="7" fill="#ff9aa2" opacity=".55"/>'+
+      '<ellipse cx="94" cy="104" rx="7" ry="9" fill="'+D+'"/><circle cx="96.5" cy="100" r="2.8" fill="#fff"/>'+
+      '<ellipse cx="146" cy="104" rx="7" ry="9" fill="'+D+'"/><circle cx="148.5" cy="100" r="2.8" fill="#fff"/>';
+    var hair='<path d="M50 98 C44 40 84 30 120 30 C158 30 196 40 190 98 C182 76 168 66 150 66 C138 78 112 80 98 70 C82 66 62 74 50 98 Z" fill="'+HAIR+'" stroke="'+OL+'" stroke-width="3" stroke-linejoin="round"/>'+tuft+
+      '<path d="M66 64 Q80 50 102 46" stroke="#a78069" stroke-width="5" fill="none" stroke-linecap="round"/>';
+    s+=P('head',ears+sh('ellipse','cx="120" cy="100" rx="72" ry="64" fill="'+SKIN+'"')+face+hair);
+    s+=P('mouth','<ellipse class="mArea" cx="120" cy="137" rx="27" ry="18"/>'+
+      '<path d="M104 130 Q120 152 136 130 Z" fill="#8a3030" stroke="'+D+'" stroke-width="2.5" stroke-linejoin="round"/>'+
+      '<path d="M107 131 L133 131 Q131 135 120 136 Q109 135 107 131 Z" fill="#fff"/>'+
+      '<path d="M112 140 Q120 133 128 140 Q120 145 112 140 Z" fill="#ff8f9b"/>');
+  }else{
+    s+=P('back',sh('path','d="M84 206 Q84 178 112 178 L128 178 Q156 178 156 206 L156 276 Q156 302 130 302 L110 302 Q84 302 84 276 Z" fill="'+TOP+'"')+
+      '<path d="M120 184 L120 296" stroke="#7cb9a4" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round" fill="none"/>'+
+      '<path d="M90 264 Q120 270 150 264" stroke="#7cb9a4" stroke-width="3" fill="none" stroke-linecap="round"/>');
+    s+=P('head',ears+sh('path','d="M48 102 C44 14 196 14 192 102 C194 146 160 164 120 164 C80 164 46 146 48 102 Z" fill="'+HAIR+'"')+
+      tuft+'<path d="M80 62 Q100 44 130 46" stroke="#a78069" stroke-width="5" fill="none" stroke-linecap="round"/>'+
+      '<path d="M108 120 Q120 132 132 120" stroke="#5e402f" stroke-width="4" fill="none" stroke-linecap="round"/>');
+  }
+  var aria=o.label?'role="img" aria-label="'+o.label+'"':'aria-hidden="true"';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+(o.vb||'0 0 240 392')+'" class="fig '+(o.cls||'')+'" '+aria+'>'+s+'</svg>';
+}
+
+/* ---------- 표정 (단계마다 다르게) ---------- */
+function stroke(d,w){return '<path d="'+d+'" fill="none" stroke="'+D+'" stroke-width="'+(w||4.5)+'" stroke-linecap="round" stroke-linejoin="round"/>';}
+function star(x,y,sc){return '<path transform="translate('+x+' '+y+') scale('+sc+')" d="M0 -9 L2.5 -2.5 L9 0 L2.5 2.5 L0 9 L-2.5 2.5 L-9 0 L-2.5 -2.5 Z" fill="#ffc928"/>';}
+function drop(x,y){return '<path d="M'+x+' '+y+' Q'+(x+12)+' '+(y+18)+' '+x+' '+(y+28)+' Q'+(x-12)+' '+(y+18)+' '+x+' '+y+' Z" fill="'+TEAR+'" stroke="#3d8fc4" stroke-width="2.5" stroke-linejoin="round"/>';}
+function eyeRound(cx,rx,ry,hl){
+  return '<ellipse cx="'+cx+'" cy="122" rx="'+rx+'" ry="'+ry+'" fill="'+D+'"/>'+
+    '<circle cx="'+(cx+4)+'" cy="'+(122-ry*0.45)+'" r="'+hl+'" fill="#fff"/>';
+}
+function faceSVG(lv){
+  var s=FACE_SKIN[lv];
+  var g='';
+  g+='<circle cx="34" cy="120" r="13" fill="'+s+'" stroke="'+OL+'" stroke-width="3.5"/><circle cx="206" cy="120" r="13" fill="'+s+'" stroke="'+OL+'" stroke-width="3.5"/>';
+  g+='<ellipse cx="120" cy="115" rx="88" ry="78" fill="'+s+'" stroke="'+OL+'" stroke-width="3.5"/>';
+  g+='<path d="M30 112 C22 38 76 22 120 22 C166 22 218 38 210 112 C200 86 184 76 162 76 C148 90 112 92 96 82 C76 76 44 84 30 112 Z" fill="'+HAIR+'" stroke="'+OL+'" stroke-width="3.5" stroke-linejoin="round"/>';
+  g+='<path d="M108 26 Q114 2 140 12 Q124 16 128 32 Z" fill="'+HAIR+'" stroke="'+OL+'" stroke-width="3.5" stroke-linejoin="round"/>';
+  g+='<path d="M58 66 Q76 46 104 42" stroke="#a78069" stroke-width="6" fill="none" stroke-linecap="round"/>';
+  g+='<ellipse cx="64" cy="148" rx="14" ry="9" fill="#ff7f8c" opacity="'+CHEEK_OP[lv]+'"/><ellipse cx="176" cy="148" rx="14" ry="9" fill="#ff7f8c" opacity="'+CHEEK_OP[lv]+'"/>';
+  var mouthDark='fill="#8a3030" stroke="'+D+'" stroke-width="3.5" stroke-linejoin="round"';
+  if(lv===0){
+    g+=stroke('M72 100 Q88 88 104 100')+stroke('M136 100 Q152 88 168 100');
+    g+=eyeRound(88,10,13,4.2)+eyeRound(152,10,13,4.2);
+    g+='<path d="M92 150 Q120 190 148 150 Z" '+mouthDark+'/>';
+    g+='<path d="M97 152 L143 152 Q140 159 120 161 Q100 159 97 152 Z" fill="#fff"/>';
+    g+='<path d="M107 168 Q120 157 133 168 Q120 175 107 168 Z" fill="#ff8f9b"/>';
+    g+=star(22,56,1.2)+star(216,70,1)+star(206,30,0.8);
+  }else if(lv===1){
+    g+=stroke('M74 101 L102 98')+stroke('M138 98 L166 101');
+    g+=eyeRound(88,8,10,3)+eyeRound(152,8,10,3);
+    g+=stroke('M98 164 Q108 155 118 164 T138 164',4.5);
+  }else if(lv===2){
+    g+=stroke('M72 106 L102 92')+stroke('M138 92 L168 106');
+    g+=eyeRound(88,8,11,3.8)+eyeRound(152,8,11,3.8);
+    g+=stroke('M104 170 Q120 157 136 170');
+    g+=drop(194,92);
+  }else if(lv===3){
+    g+=stroke('M68 112 L104 88',5)+stroke('M136 88 L172 112',5);
+    g+=eyeRound(88,9,10,4.6)+eyeRound(152,9,10,4.6);
+    g+='<ellipse cx="88" cy="136" rx="10" ry="3.6" fill="'+TEAR+'"/><ellipse cx="152" cy="136" rx="10" ry="3.6" fill="'+TEAR+'"/>';
+    g+=drop(76,142)+drop(166,150);
+    g+=stroke('M98 172 Q108 159 120 169 Q132 159 142 172',4.5);
+  }else if(lv===4){
+    g+=stroke('M68 108 L104 90',5.5)+stroke('M136 90 L172 108',5.5);
+    g+='<path d="M96 132 Q86 152 90 176" stroke="'+TEAR+'" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M144 132 Q154 152 150 176" stroke="'+TEAR+'" stroke-width="9" fill="none" stroke-linecap="round"/>';
+    g+=stroke('M78 108 L102 122 L78 136',6.5)+stroke('M162 108 L138 122 L162 136',6.5);
+    g+='<path d="M100 174 Q120 148 140 174 Z" '+mouthDark+'/>';
+    g+='<path d="M110 172 Q120 163 130 172 Z" fill="#ff8f9b"/>';
+  }else{
+    g+=stroke('M64 104 L106 80',5.5)+stroke('M134 80 L176 104',5.5);
+    g+='<path d="M80 138 Q68 162 74 192" stroke="'+TEAR+'" stroke-width="13" fill="none" stroke-linecap="round"/><path d="M160 138 Q172 162 166 192" stroke="'+TEAR+'" stroke-width="13" fill="none" stroke-linecap="round"/>';
+    g+='<ellipse cx="88" cy="122" rx="16" ry="18" fill="#fff" stroke="'+D+'" stroke-width="3.5"/><circle cx="88" cy="127" r="6" fill="'+D+'"/><circle cx="90" cy="124" r="2" fill="#fff"/>';
+    g+='<ellipse cx="152" cy="122" rx="16" ry="18" fill="#fff" stroke="'+D+'" stroke-width="3.5"/><circle cx="152" cy="127" r="6" fill="'+D+'"/><circle cx="154" cy="124" r="2" fill="#fff"/>';
+    g+='<ellipse cx="120" cy="168" rx="21" ry="23" '+mouthDark+'/>';
+    g+='<path d="M103 152 Q120 146 137 152 L135 161 Q120 156 105 161 Z" fill="#fff"/>';
+    g+='<ellipse cx="120" cy="183" rx="12" ry="7" fill="#ff8f9b"/>';
+    g+='<path d="M214 52 L228 44 M222 72 L238 70 M208 34 L212 20 M26 52 L12 44 M18 72 L2 70 M32 34 L28 20" stroke="#e5383b" stroke-width="6" stroke-linecap="round" fill="none"/>';
+    g+=drop(190,86);
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" aria-hidden="true">'+g+'</svg>';
+}
+
+/* ---------- 상태 ---------- */
+var sel=new Set();
+var level=0;
+var step=1;
+var sound=true;
+
+function say(t){
+  if(!sound||!('speechSynthesis' in window))return;
+  try{
+    window.speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(t);
+    u.lang='ko-KR';u.rate=0.9;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ---------- 활동 1 ---------- */
+$('#logo').innerHTML=faceSVG(0).replace('<svg ','<svg style="width:56px;height:auto" ');
+$('#bodies').innerHTML=
+  '<figure class="live-fig">'+buildFig('front',{on:sel,cls:'live',label:'몸 앞모습'})+'<figcaption>앞</figcaption></figure>'+
+  '<figure class="live-fig">'+buildFig('back',{on:sel,cls:'live',label:'몸 뒷모습'})+'<figcaption>뒤</figcaption></figure>';
+$('#cards').innerHTML=PARTS.map(function(p){
+  return '<button type="button" class="card" data-part="'+p.id+'" aria-pressed="false">'+
+    '<span class="check" aria-hidden="true">✓</span>'+
+    buildFig(p.view,{hot:p.id,vb:p.crop.join(' '),cls:'thumb'})+
+    '<span class="cl">'+p.label+'</span></button>';
+}).join('');
+
+function partById(id){return PARTS.filter(function(p){return p.id===id})[0];}
+function toggle(id){
+  if(sel.has(id)){sel.delete(id);}
+  else{sel.add(id);say(partById(id).say);}
+  renderSel();
+}
+function renderSel(){
+  $$('.live .part').forEach(function(g){g.classList.toggle('on',sel.has(g.getAttribute('data-part')));});
+  $$('.card').forEach(function(c){
+    var on=sel.has(c.getAttribute('data-part'));
+    c.classList.toggle('isOn',on);
+    c.setAttribute('aria-pressed',on?'true':'false');
+  });
+  updateNav();
+}
+$('#cards').addEventListener('click',function(e){
+  var c=e.target.closest('.card');if(c)toggle(c.getAttribute('data-part'));
+});
+$('#bodies').addEventListener('click',function(e){
+  var g=e.target.closest('.part');if(g)toggle(g.getAttribute('data-part'));
+});
+$('#clearParts').addEventListener('click',function(){sel.clear();renderSel();});
+
+/* ---------- 활동 2 ---------- */
+var rail=$('#rail'),thumb=$('#thumb');
+$('#labels').innerHTML=LV_LABEL.map(function(t,i){
+  return '<button type="button" class="lb" data-lv="'+i+'" style="--soft:'+LV_SOFT[i]+'">'+faceSVG(i)+'<span class="no">'+i+'</span><span class="t">'+t+'</span></button>';
+}).join('');
+
+function setFrac(f){thumb.style.left=(f*100)+'%';}
+function setLevel(l){
+  level=l;
+  var c=LV_COLOR[l];
+  var st=$('#stage');
+  st.style.background=LV_SOFT[l];st.style.borderColor=c;
+  var fb=$('#faceBig');
+  fb.className='faceBig lv'+l;
+  fb.innerHTML=faceSVG(l);
+  $('#lvNum').textContent=l+'단계';
+  $('#lvNum').style.borderColor=c;
+  $('#lvLabel').textContent=LV_LABEL[l];
+  thumb.textContent=l;thumb.style.background=c;
+  rail.setAttribute('aria-valuenow',l);
+  rail.setAttribute('aria-valuetext',l+'단계 '+LV_LABEL[l]);
+  $$('.lb').forEach(function(b){b.classList.toggle('act',+b.getAttribute('data-lv')===l);});
+}
+var dragging=false;
+function move(e){
+  var r=rail.getBoundingClientRect();
+  var f=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width));
+  setFrac(f);
+  var l=Math.round(f*5);
+  if(l!==level)setLevel(l);
+}
+rail.addEventListener('pointerdown',function(e){
+  dragging=true;
+  try{rail.setPointerCapture(e.pointerId);}catch(err){}
+  thumb.classList.add('drag');
+  move(e);
+});
+rail.addEventListener('pointermove',function(e){if(dragging)move(e);});
+function endDrag(){
+  if(!dragging)return;
+  dragging=false;
+  thumb.classList.remove('drag');
+  setFrac(level/5);
+  say(LV_LABEL[level]);
+}
+rail.addEventListener('pointerup',endDrag);
+rail.addEventListener('pointercancel',endDrag);
+rail.addEventListener('keydown',function(e){
+  var l=level;
+  if(e.key==='ArrowRight'||e.key==='ArrowUp')l=Math.min(5,level+1);
+  else if(e.key==='ArrowLeft'||e.key==='ArrowDown')l=Math.max(0,level-1);
+  else if(e.key==='Home')l=0;
+  else if(e.key==='End')l=5;
+  else return;
+  e.preventDefault();
+  setLevel(l);setFrac(l/5);say(LV_LABEL[l]);
+});
+$('#labels').addEventListener('click',function(e){
+  var b=e.target.closest('.lb');if(!b)return;
+  var l=+b.getAttribute('data-lv');
+  setLevel(l);setFrac(l/5);say(LV_LABEL[l]);
+});
+
+/* ---------- 활동 3 ---------- */
+function renderChips(){
+  var list=PARTS.filter(function(p){return sel.has(p.id)});
+  $('#pickedChips').innerHTML=list.length?
+    '<b>아픈 곳</b>'+list.map(function(p){return '<span class="chip">'+p.label+'</span>'}).join(''):
+    '<b>아픈 곳을 아직 고르지 않았어요</b>';
+}
+function renderCert(){
+  $('#certDate').textContent=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+  $('#certFig').innerHTML=
+    '<figure>'+buildFig('front',{on:sel,label:'몸 앞모습'})+'<figcaption>앞</figcaption></figure>'+
+    '<figure>'+buildFig('back',{on:sel,label:'몸 뒷모습'})+'<figcaption>뒤</figcaption></figure>';
+  var list=PARTS.filter(function(p){return sel.has(p.id)});
+  $('#certParts').innerHTML=list.length?list.map(function(p){
+    return '<li class="isOn">'+buildFig(p.view,{hot:p.id,vb:p.crop.join(' '),cls:'thumb'})+'<span>'+p.label+'</span></li>';
+  }).join(''):'<li style="grid-column:1/-1;border:0;background:none;font-family:var(--f-body);font-size:18px;color:var(--muted)">아픈 곳을 고르지 않았어요</li>';
+  $('#certFace').innerHTML=faceSVG(level);
+  $('#certNum').textContent=level+'단계';
+  $('#certLab').textContent=LV_LABEL[level];
+  $('#certMeter').innerHTML=LV_COLOR.map(function(c,i){
+    return '<span class="seg'+(i===level?' act':'')+'" style="--c:'+c+';--t:'+LV_TEXT[i]+'">'+i+'</span>';
+  }).join('');
+}
+var printed=false;
+window.addEventListener('beforeprint',function(){printed=true;});
+function certDoc(){
+  var clone=$('#cert').cloneNode(true);
+  clone.querySelector('input').setAttribute('value',$('#nameInput').value);
+  return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>보건증</title>'+
+    '<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">'+
+    document.querySelector('style').outerHTML+
+    '</head><body><main><section class="panel" id="s3">'+clone.outerHTML+'</section></main>'+
+    '<script>window.onload=function(){setTimeout(function(){window.print();},700);};<\/script>'+
+    '</body></html>';
+}
+function downloadCert(){
+  var blob=new Blob([certDoc()],{type:'text/html;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='보건증.html';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);
+}
+function showPrintHelp(){
+  var m=$('#printMsg');
+  m.innerHTML='이 화면에서는 인쇄 창이 막혀 있어요.<br>아래 버튼으로 보건증 파일을 받아서 크롬이나 엣지에서 열면 인쇄 창이 바로 떠요.<br>'+
+    '<button type="button" class="ghostBtn" id="dlBtn" style="margin-top:10px">보건증 파일 받기</button><br>'+
+    '<small>(이 웹 파일 전체를 크롬이나 엣지에서 직접 열어도 돼요)</small>';
+  m.hidden=false;
+  $('#dlBtn').addEventListener('click',downloadCert);
+}
+function printCert(){
+  $('#printMsg').hidden=true;
+  printed=false;
+  try{window.print();}catch(e){}
+  setTimeout(function(){if(!printed)showPrintHelp();},800);
+}
+$('#printBtn').addEventListener('click',printCert);
+
+/* ---------- 단계 이동 ---------- */
+function updateNav(){
+  var next=$('#next');
+  next.hidden=(step===3);
+  var blocked=(step===1&&sel.size===0);
+  next.disabled=blocked;
+  $('#navNote').textContent=blocked?'아픈 곳을 하나 눌러 주세요':'';
+  $('#prev').textContent=(step===1)?'처음으로':'◀ 이전';
+  $('#prev').style.visibility=(step===1)?'hidden':'visible';
+  if(step===3){
+    $('#next').hidden=true;
+  }
+}
+function go(n){
+  step=n;
+  ['s1','s2','s3'].forEach(function(id,i){$('#'+id).hidden=(i+1!==n);});
+  $$('.step').forEach(function(b,i){
+    b.classList.toggle('on',i+1===n);
+    b.classList.toggle('done',i+1<n);
+    if(i+1===n)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');
+  });
+  if(n===2){renderChips();setLevel(level);setFrac(level/5);}
+  if(n===3)renderCert();
+  updateNav();
+  window.scrollTo(0,0);
+}
+$$('.step').forEach(function(b){b.addEventListener('click',function(){go(+b.getAttribute('data-go'));});});
+$('#next').addEventListener('click',function(){if(step<3)go(step+1);});
+$('#prev').addEventListener('click',function(){if(step>1)go(step-1);});
+
+/* 소리 */
+$('#soundBtn').addEventListener('click',function(){
+  sound=!sound;
+  this.setAttribute('aria-pressed',sound?'true':'false');
+  $('#soundTxt').textContent=sound?'소리 켜짐':'소리 꺼짐';
+  $('#soundWave').style.display=sound?'':'none';
+  if(!sound&&'speechSynthesis' in window){try{window.speechSynthesis.cancel();}catch(e){}}
+});
+
+setLevel(0);setFrac(0);renderSel();updateNav();
+})();
+</script>
+</body>
+</html>
